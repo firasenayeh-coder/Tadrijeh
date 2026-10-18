@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#12100a">
+<title>TADRIJA — Old Damascus, Walked Slowly</title>
+<meta name="description" content="A cultural walking companion for Old Damascus. Walk slowly. Discover stories.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=EB+Garamond:ital,wght@0,400;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+:root{
+  --ink:#12100a;--ink2:#1c1810;--ink3:#261f13;--parch:#f2e8d5;--sand:#e4d3b5;
+  --stone:#a69070;--copper:#96591e;--amber:#c4881f;--gold:#d9a832;--dusk:#3a2c18;
+  --cream:#f9f4ea;--sage:#5c6b4a;--w06:rgba(255,255,255,0.06);--w12:rgba(255,255,255,0.12);--w20:rgba(255,255,255,0.20);
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;width:100%;overflow:hidden;background:var(--ink);font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased;}
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;opacity:0;pointer-events:none;transition:opacity 0.5s ease;}
+.screen.active{opacity:1;pointer-events:all;}
+.noise{position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:0.02;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-size:200px;}
+
+/* ════ LANDING ════ */
+#landing{background:var(--ink);overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.ld-hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 26px 40px;position:relative;overflow:hidden;text-align:center;}
+.ld-glow{position:absolute;width:520px;height:520px;border-radius:50%;background:radial-gradient(circle,rgba(196,136,31,0.13) 0%,transparent 65%);top:50%;left:50%;transform:translate(-50%,-62%);animation:breathe 6s ease-in-out infinite;}
+@keyframes breathe{0%,100%{transform:translate(-50%,-62%) scale(1);}50%{transform:translate(-50%,-62%) scale(1.08);}}
+.ld-arch{position:absolute;top:34px;left:50%;transform:translateX(-50%);width:min(280px,72vw);opacity:0.06;}
+.ld-body{position:relative;display:flex;flex-direction:column;align-items:center;animation:riseIn 1.5s cubic-bezier(0.16,1,0.3,1) forwards;opacity:0;}
+@keyframes riseIn{from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);}}
+.ld-pre{font-size:0.58rem;letter-spacing:0.55em;text-transform:uppercase;color:var(--amber);opacity:0.6;margin-bottom:20px;}
+.ld-logo{font-family:'Cormorant Garamond',serif;font-size:clamp(4.2rem,19vw,7.5rem);font-weight:300;color:var(--parch);letter-spacing:0.07em;line-height:0.9;margin-bottom:14px;}
+.ld-tag{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.1rem;color:var(--stone);letter-spacing:0.12em;margin-bottom:28px;}
+.ld-desc{font-size:0.86rem;color:var(--stone);line-height:1.7;max-width:330px;margin-bottom:44px;}
+.ld-desc em{color:var(--parch);font-style:normal;}
+.ld-ctas{display:flex;flex-direction:column;gap:12px;width:min(300px,82vw);}
+.ld-btn{font-family:'DM Sans',sans-serif;font-size:0.68rem;letter-spacing:0.32em;text-transform:uppercase;padding:16px 30px;cursor:pointer;transition:all 0.25s;border:none;position:relative;overflow:hidden;}
+.ld-btn.primary{background:var(--amber);color:var(--ink);font-weight:500;}
+.ld-btn.primary:active{transform:scale(0.98);background:var(--gold);}
+.ld-btn.ghost{background:transparent;border:1px solid var(--w12);color:var(--stone);}
+.ld-btn.ghost:active{background:var(--w06);}
+.ld-scroll-hint{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:7px;opacity:0.4;}
+.ld-scroll-hint span{font-size:0.52rem;letter-spacing:0.3em;text-transform:uppercase;color:var(--stone);}
+.ld-scroll-arrow{font-size:0.9rem;color:var(--amber);animation:bob 2s ease-in-out infinite;}
+@keyframes bob{0%,100%{transform:translateY(0);}50%{transform:translateY(5px);}}
+
+/* story sections */
+.ld-section{padding:70px 26px;border-top:1px solid var(--w06);position:relative;}
+.ld-sec-lbl{font-size:0.56rem;letter-spacing:0.45em;text-transform:uppercase;color:var(--copper);margin-bottom:18px;}
+.ld-sec-title{font-family:'Cormorant Garamond',serif;font-size:1.9rem;font-weight:300;color:var(--parch);line-height:1.25;margin-bottom:16px;}
+.ld-sec-title em{font-style:italic;color:var(--gold);}
+.ld-sec-text{font-family:'EB Garamond',serif;font-size:1rem;line-height:1.85;color:rgba(242,232,213,0.72);}
+.ld-sec-text p{margin-bottom:14px;}
+
+.ld-diff{display:flex;flex-direction:column;gap:2px;margin:24px 0;}
+.ld-diff-row{display:flex;align-items:center;gap:16px;padding:16px 0;border-bottom:1px solid var(--w06);}
+.ld-diff-row:last-child{border-bottom:none;}
+.ld-diff-ic{width:40px;height:40px;border-radius:50%;background:rgba(196,136,31,0.1);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;}
+.ld-diff-txt{flex:1;}
+.ld-diff-h{font-family:'Cormorant Garamond',serif;font-size:1.15rem;color:var(--parch);margin-bottom:2px;}
+.ld-diff-p{font-size:0.76rem;color:var(--stone);line-height:1.5;}
+
+.ld-taste{background:var(--ink2);border-radius:4px;padding:22px;margin-top:8px;border:1px solid rgba(196,136,31,0.15);position:relative;overflow:hidden;}
+.ld-taste-shimmer{position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--amber),transparent);animation:shimmer 3s ease-in-out infinite;}
+@keyframes shimmer{0%,100%{opacity:0.3;}50%{opacity:1;}}
+.ld-taste-lbl{font-size:0.52rem;letter-spacing:0.4em;text-transform:uppercase;color:var(--gold);margin-bottom:10px;}
+.ld-taste-q{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.3rem;color:var(--parch);line-height:1.4;margin-bottom:12px;}
+.ld-taste-sub{font-size:0.75rem;color:var(--stone);line-height:1.6;}
+
+/* waitlist */
+.ld-wait{padding:70px 26px 90px;border-top:1px solid var(--w06);text-align:center;background:linear-gradient(to bottom,transparent,rgba(196,136,31,0.03));}
+.ld-wait-title{font-family:'Cormorant Garamond',serif;font-size:2rem;font-weight:300;color:var(--parch);line-height:1.2;margin-bottom:12px;}
+.ld-wait-title em{font-style:italic;color:var(--gold);}
+.ld-wait-text{font-size:0.84rem;color:var(--stone);line-height:1.65;max-width:320px;margin:0 auto 28px;}
+.ld-form{display:flex;flex-direction:column;gap:11px;max-width:320px;margin:0 auto;}
+.ld-input{background:var(--w06);border:1px solid var(--w12);border-radius:3px;padding:15px 16px;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--parch);text-align:center;letter-spacing:0.02em;}
+.ld-input::placeholder{color:var(--stone);opacity:0.6;}
+.ld-input:focus{outline:none;border-color:rgba(196,136,31,0.4);background:var(--w12);}
+.ld-form-btn{background:var(--amber);color:var(--ink);border:none;border-radius:3px;padding:16px;font-family:'DM Sans',sans-serif;font-size:0.66rem;letter-spacing:0.3em;text-transform:uppercase;font-weight:500;cursor:pointer;transition:all 0.2s;}
+.ld-form-btn:active{transform:scale(0.98);background:var(--gold);}
+.ld-form-note{font-size:0.68rem;color:var(--stone);opacity:0.6;margin-top:14px;}
+.ld-success{display:none;flex-direction:column;align-items:center;gap:10px;padding:20px;}
+.ld-success.show{display:flex;}
+.ld-success-ic{font-size:2rem;}
+.ld-success-txt{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.2rem;color:var(--gold);}
+.ld-success-sub{font-size:0.78rem;color:var(--stone);}
+
+.ld-footer{padding:30px 26px 40px;text-align:center;border-top:1px solid var(--w06);}
+.ld-footer-logo{font-family:'Cormorant Garamond',serif;font-size:1.3rem;color:var(--parch);letter-spacing:0.1em;margin-bottom:6px;}
+.ld-footer-logo em{font-style:italic;color:var(--gold);}
+.ld-footer-txt{font-size:0.6rem;letter-spacing:0.3em;text-transform:uppercase;color:var(--stone);opacity:0.4;}
+
+/* preview ribbon */
+.preview-ribbon{position:fixed;top:0;left:0;right:0;background:rgba(196,136,31,0.95);color:var(--ink);padding:6px 16px;text-align:center;font-size:0.56rem;letter-spacing:0.25em;text-transform:uppercase;font-weight:500;z-index:300;display:flex;align-items:center;justify-content:center;gap:8px;}
+.preview-ribbon span{opacity:0.8;}
+.preview-exit{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:0.7rem;cursor:pointer;opacity:0.7;}
+
+/* ════ HOME (preview app) ════ */
+#home{background:var(--cream);overflow:hidden;padding-top:26px;}
+.home-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:82px;}
+.hm-header{background:var(--ink2);padding:42px 24px 26px;position:relative;overflow:hidden;}
+.hm-header-glow{position:absolute;top:-40px;right:-40px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(196,136,31,0.15) 0%,transparent 70%);}
+.hm-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;position:relative;}
+.hm-wordmark{font-family:'Cormorant Garamond',serif;font-size:1.55rem;font-weight:300;color:var(--parch);letter-spacing:0.1em;}
+.hm-wordmark em{font-style:italic;color:var(--gold);}
+.hm-map-btn{display:flex;align-items:center;gap:7px;background:var(--w06);border:1px solid var(--w12);border-radius:40px;padding:8px 14px;cursor:pointer;transition:all 0.2s;}
+.hm-map-btn:active{background:var(--w12);}
+.hm-map-btn span{font-size:0.6rem;letter-spacing:0.15em;color:var(--stone);}
+.hm-hero h1{font-family:'Cormorant Garamond',serif;font-size:clamp(2rem,8.5vw,3rem);font-weight:300;color:var(--parch);line-height:1.15;}
+.hm-hero h1 em{font-style:italic;color:var(--gold);}
+.hm-hero p{font-size:0.78rem;color:var(--stone);margin-top:9px;line-height:1.65;}
+.sec{display:flex;justify-content:space-between;align-items:baseline;padding:24px 24px 12px;}
+.sec-lbl{font-size:0.58rem;letter-spacing:0.45em;text-transform:uppercase;color:var(--copper);}
+.sec-all{font-size:0.62rem;color:var(--stone);opacity:0.55;}
+.routes-rail{display:flex;gap:11px;padding:0 24px 24px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.routes-rail::-webkit-scrollbar{display:none;}
+.rc{flex-shrink:0;width:195px;background:var(--ink2);border-radius:4px;overflow:hidden;cursor:pointer;transition:transform 0.15s;border:1px solid rgba(255,255,255,0.04);}
+.rc:active{transform:scale(0.96);}
+.rc.featured{border-color:rgba(196,136,31,0.25);}
+.rc-img{height:128px;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+.rc-emoji{font-size:2.8rem;position:relative;z-index:1;}
+.rc-veil{position:absolute;inset:0;background:linear-gradient(to bottom,transparent 30%,var(--ink2) 100%);}
+.rc-badge{position:absolute;top:9px;right:9px;background:var(--gold);color:var(--ink);font-size:0.42rem;letter-spacing:0.22em;text-transform:uppercase;padding:3px 7px;border-radius:40px;z-index:2;font-weight:500;}
+.rc-soon{position:absolute;top:9px;right:9px;background:var(--w12);color:var(--stone);font-size:0.42rem;letter-spacing:0.22em;text-transform:uppercase;padding:3px 7px;border-radius:40px;z-index:2;}
+.rc-body{padding:10px 14px 15px;}
+.rc-tag{font-size:0.5rem;letter-spacing:0.35em;text-transform:uppercase;color:var(--amber);opacity:0.75;margin-bottom:4px;}
+.rc-name{font-family:'Cormorant Garamond',serif;font-size:1.15rem;color:var(--parch);line-height:1.2;margin-bottom:8px;}
+.rc-row{display:flex;justify-content:space-between;align-items:center;}
+.rc-meta{font-size:0.58rem;color:var(--stone);}
+.rc-arrow{font-size:0.7rem;color:var(--amber);opacity:0.6;}
+.div{height:1px;background:rgba(18,16,10,0.07);margin:0 24px;}
+.insights-strip{padding:0 24px 24px;display:flex;flex-direction:column;gap:10px;}
+.insight-pill{display:flex;gap:13px;align-items:center;background:var(--ink);border-radius:4px;padding:14px 16px;cursor:pointer;transition:transform 0.15s;border:1px solid rgba(255,255,255,0.04);}
+.insight-pill:active{transform:scale(0.97);}
+.insight-pill.real{border-color:rgba(196,136,31,0.2);}
+.ip-icon{font-size:1.4rem;flex-shrink:0;}
+.ip-body{flex:1;}
+.ip-label{font-size:0.5rem;letter-spacing:0.35em;text-transform:uppercase;color:var(--amber);opacity:0.7;margin-bottom:3px;}
+.ip-label.verified{color:var(--gold);}
+.ip-text{font-family:'Cormorant Garamond',serif;font-size:1rem;color:var(--parch);line-height:1.25;}
+.ip-sub{font-size:0.65rem;color:var(--stone);margin-top:2px;}
+.ip-arr{font-size:0.7rem;color:var(--stone);opacity:0.4;flex-shrink:0;}
+.bnav{position:fixed;bottom:0;left:0;right:0;background:var(--ink);border-top:1px solid var(--w06);display:flex;padding:10px 0 env(safe-area-inset-bottom,20px);z-index:200;}
+.bn{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:3px 0;opacity:0.32;transition:opacity 0.2s;}
+.bn.on{opacity:1;}
+.bn-ic{font-size:1.1rem;}
+.bn-lb{font-size:0.48rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--parch);}
+
+/* ════ MAP ════ */
+#mapview{background:var(--ink);overflow:hidden;}
+#leafletMap{position:absolute;inset:0;background:#0b0906;}
+.mv-top{position:absolute;top:0;left:0;right:0;padding:16px 20px;background:linear-gradient(to bottom,rgba(11,9,6,0.95) 55%,transparent);display:flex;justify-content:space-between;align-items:center;z-index:500;}
+.mv-back{background:var(--w06);border:1px solid var(--w12);border-radius:40px;padding:8px 14px;cursor:pointer;font-size:0.6rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--stone);}
+.mv-title{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1rem;color:var(--parch);}
+.mv-legend{position:absolute;bottom:20px;left:20px;right:20px;background:rgba(28,24,16,0.92);border:1px solid var(--w12);border-radius:6px;padding:14px 16px;z-index:500;display:flex;gap:18px;justify-content:center;backdrop-filter:blur(8px);}
+.mv-leg{display:flex;align-items:center;gap:7px;}
+.mv-leg-dot{width:9px;height:9px;border-radius:50%;}
+.mv-leg-dot.route{background:var(--amber);}
+.mv-leg-dot.insight{background:var(--copper);}
+.mv-leg span{font-size:0.6rem;color:var(--stone);letter-spacing:0.05em;}
+
+/* ════ ROUTE DETAIL ════ */
+#routedet{background:var(--cream);overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:100px;}
+.rd-hero{background:var(--ink2);padding:40px 24px 26px;position:relative;overflow:hidden;min-height:200px;}
+.rd-hero-emoji{position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:7rem;opacity:0.05;pointer-events:none;}
+.rd-back{background:none;border:none;cursor:pointer;font-size:0.6rem;letter-spacing:0.28em;text-transform:uppercase;color:var(--stone);margin-bottom:20px;display:flex;align-items:center;gap:6px;}
+.rd-tag{font-size:0.55rem;letter-spacing:0.4em;text-transform:uppercase;color:var(--amber);margin-bottom:7px;opacity:0.8;}
+.rd-title{font-family:'Cormorant Garamond',serif;font-size:clamp(1.9rem,7.5vw,2.7rem);font-weight:300;color:var(--parch);line-height:1.15;margin-bottom:9px;}
+.rd-desc{font-size:0.78rem;color:var(--stone);line-height:1.65;margin-bottom:20px;}
+.rd-stats{display:flex;gap:20px;}
+.rd-sv{font-family:'Cormorant Garamond',serif;font-size:1.45rem;color:var(--parch);line-height:1;}
+.rd-sl{font-size:0.52rem;letter-spacing:0.22em;text-transform:uppercase;color:var(--stone);margin-top:2px;}
+.rd-stops{padding:4px 24px 0;}
+.stop{display:flex;gap:16px;padding:22px 0;border-bottom:1px solid rgba(18,16,10,0.07);cursor:pointer;}
+.stop:last-child{border-bottom:none;}
+.stop-spine{display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0;}
+.stop-num{width:28px;height:28px;border-radius:50%;border:1px solid var(--stone);display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:0.82rem;color:var(--dusk);transition:all 0.3s;}
+.stop.first .stop-num{background:var(--amber);border-color:var(--amber);color:var(--ink);}
+.stop.insight-stop .stop-num{border-color:var(--copper);color:var(--copper);background:rgba(150,89,30,0.07);}
+.stop-line{width:1px;flex:1;min-height:20px;background:linear-gradient(to bottom,rgba(166,144,112,0.25),transparent);}
+.stop-body{flex:1;padding-top:2px;}
+.stop-tag{font-size:0.53rem;letter-spacing:0.32em;text-transform:uppercase;color:var(--copper);margin-bottom:4px;}
+.stop-name{font-family:'Cormorant Garamond',serif;font-size:1.25rem;color:var(--ink);line-height:1.2;margin-bottom:6px;}
+.stop-prev{font-size:0.77rem;color:var(--dusk);line-height:1.62;opacity:0.82;}
+.insight-tag{display:inline-flex;align-items:center;gap:5px;background:rgba(150,89,30,0.09);border:1px solid rgba(150,89,30,0.18);border-radius:40px;padding:3px 9px;margin-bottom:5px;}
+.insight-tag span{font-size:0.5rem;letter-spacing:0.28em;text-transform:uppercase;color:var(--copper);}
+.rd-begin{position:fixed;bottom:0;left:0;right:0;padding:13px 24px env(safe-area-inset-bottom,26px);background:linear-gradient(to top,var(--cream) 72%,transparent);}
+.btn-begin{width:100%;background:var(--ink);color:var(--gold);border:none;padding:16px;font-family:'DM Sans',sans-serif;font-size:0.68rem;letter-spacing:0.32em;text-transform:uppercase;cursor:pointer;border-radius:3px;display:flex;align-items:center;justify-content:center;gap:8px;transition:transform 0.15s;}
+.btn-begin:active{transform:scale(0.98);}
+
+/* ════ WALKING ════ */
+#walking{background:var(--ink);overflow:hidden;}
+#walkMap{position:absolute;inset:0;background:#0a0804;}
+.wk-top{position:absolute;top:0;left:0;right:0;padding:16px 20px;background:linear-gradient(to bottom,rgba(10,8,4,0.95) 55%,transparent);display:flex;justify-content:space-between;align-items:flex-start;z-index:500;}
+.wk-route-nm{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:0.95rem;color:var(--parch);}
+.wk-prog{display:flex;gap:4px;margin-top:7px;align-items:center;}
+.wkp{width:5px;height:5px;border-radius:50%;background:var(--stone);opacity:0.28;transition:all 0.4s;}
+.wkp.done{background:var(--copper);opacity:1;}
+.wkp.now{background:var(--gold);opacity:1;width:16px;border-radius:3px;}
+.wkp.ins{background:var(--copper);opacity:0.55;}
+.wk-end{background:var(--w06);border:1px solid var(--w12);border-radius:40px;padding:7px 13px;font-size:0.55rem;letter-spacing:0.22em;text-transform:uppercase;color:var(--stone);cursor:pointer;font-family:'DM Sans',sans-serif;}
+.insight-toast{position:absolute;bottom:0;left:0;right:0;background:var(--ink2);border-radius:12px 12px 0 0;transform:translateY(100%);transition:transform 0.45s cubic-bezier(0.32,0,0,1);z-index:510;border-top:1px solid var(--w06);max-height:74vh;overflow:hidden;box-shadow:0 -16px 50px rgba(0,0,0,0.5);}
+.insight-toast.peek{transform:translateY(calc(100% - 92px));}
+.insight-toast.open{transform:translateY(0);overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.it-handle-wrap{padding:12px 0 0;display:flex;justify-content:center;cursor:pointer;}
+.it-handle{width:32px;height:3px;background:var(--w20);border-radius:2px;}
+.it-peek{padding:10px 20px 16px;display:flex;gap:13px;align-items:center;cursor:pointer;}
+.it-icon-wrap{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;}
+.it-icon-wrap.route-ic{background:rgba(196,136,31,0.15);}
+.it-icon-wrap.insight-ic{background:rgba(150,89,30,0.15);}
+.it-peek-right{flex:1;min-width:0;}
+.it-peek-lbl{font-size:0.52rem;letter-spacing:0.32em;text-transform:uppercase;margin-bottom:3px;}
+.it-peek-lbl.nav{color:var(--amber);}
+.it-peek-lbl.ins{color:var(--copper);}
+.it-peek-name{font-family:'Cormorant Garamond',serif;font-size:1.3rem;color:var(--parch);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.it-peek-sub{font-size:0.67rem;color:var(--stone);margin-top:2px;}
+.it-chevron{font-size:0.7rem;color:var(--stone);opacity:0.4;flex-shrink:0;transition:transform 0.3s;}
+.insight-toast.open .it-chevron{transform:rotate(180deg);}
+.it-rule{height:1px;background:var(--w06);margin:0 20px;}
+.it-full{padding:20px 20px 50px;}
+.it-story-ey{font-size:0.54rem;letter-spacing:0.38em;text-transform:uppercase;color:var(--copper);margin-bottom:8px;}
+.it-story-title{font-family:'Cormorant Garamond',serif;font-size:1.75rem;font-weight:300;color:var(--parch);line-height:1.2;margin-bottom:4px;}
+.it-story-sub{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:0.9rem;color:var(--stone);margin-bottom:18px;}
+.it-rule2{height:1px;background:var(--w06);margin-bottom:18px;}
+.it-body{font-family:'EB Garamond',serif;font-size:0.93rem;line-height:1.85;color:rgba(242,232,213,0.75);}
+.it-body p{margin-bottom:14px;}
+.it-body p:first-child::first-letter{font-family:'Cormorant Garamond',serif;font-size:3rem;font-weight:300;color:var(--copper);float:left;line-height:0.82;margin-right:6px;margin-top:7px;}
+.it-quote{border-left:2px solid var(--amber);padding:11px 16px;margin:18px 0;background:rgba(196,136,31,0.05);}
+.it-quote p{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.05rem;color:var(--parch);line-height:1.6;opacity:0.85;}
+.it-quote cite{display:block;font-size:0.58rem;letter-spacing:0.22em;text-transform:uppercase;color:var(--copper);margin-top:8px;font-style:normal;}
+.it-ins-header{display:flex;align-items:flex-start;gap:10px;margin-bottom:14px;}
+.it-ins-badge{font-size:1.8rem;flex-shrink:0;}
+.it-ins-lbl{font-size:0.5rem;letter-spacing:0.35em;text-transform:uppercase;color:var(--copper);margin-bottom:4px;}
+.it-ins-name{font-family:'Cormorant Garamond',serif;font-size:1.4rem;color:var(--parch);line-height:1.2;}
+.it-ins-body{font-family:'EB Garamond',serif;font-size:0.93rem;line-height:1.8;color:rgba(242,232,213,0.75);}
+.it-ins-body p{margin-bottom:12px;}
+.it-find{background:rgba(150,89,30,0.08);border:1px solid rgba(150,89,30,0.18);border-radius:3px;padding:13px 15px;margin-top:14px;}
+.it-find-lbl{font-size:0.5rem;letter-spacing:0.32em;text-transform:uppercase;color:var(--copper);margin-bottom:6px;}
+.it-find-text{font-size:0.8rem;color:rgba(242,232,213,0.65);line-height:1.6;}
+.btn-next{width:100%;background:var(--ink);border:1px solid var(--w12);color:var(--gold);padding:14px;font-family:'DM Sans',sans-serif;font-size:0.65rem;letter-spacing:0.28em;text-transform:uppercase;cursor:pointer;border-radius:3px;margin-top:20px;display:flex;align-items:center;justify-content:center;gap:7px;transition:all 0.2s;}
+.btn-next:active{transform:scale(0.97);}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+.fu{animation:fadeUp 0.4s ease forwards;}
+.leaflet-container{background:#0b0906 !important;font-family:'DM Sans',sans-serif !important;}
+.leaflet-popup-content-wrapper{background:var(--ink2) !important;color:var(--parch) !important;border-radius:4px !important;}
+.leaflet-popup-tip{background:var(--ink2) !important;}
+.leaflet-popup-content{margin:12px 14px !important;}
+.tdj-popup-tag{font-size:0.5rem;letter-spacing:0.25em;text-transform:uppercase;color:var(--amber);margin-bottom:3px;}
+.tdj-popup-name{font-family:'Cormorant Garamond',serif;font-size:1.1rem;color:var(--parch);}
+</style>
+</head>
+<body>
+<div class="noise"></div>
+
+<!-- ════ LANDING ════ -->
+<div class="screen active" id="landing">
+  <div class="ld-hero">
+    <div class="ld-glow"></div>
+    <svg class="ld-arch" viewBox="0 0 300 260" fill="none">
+      <path d="M150 18 L168 50 L150 42 L132 50 Z" fill="white"/>
+      <path d="M112 65 Q150 32 188 65" stroke="white" stroke-width="0.9" fill="none"/>
+      <path d="M92 88 Q150 46 208 88" stroke="white" stroke-width="0.7" fill="none"/>
+      <path d="M74 112 Q150 60 226 112" stroke="white" stroke-width="0.5" fill="none"/>
+      <line x1="150" y1="42" x2="150" y2="260" stroke="white" stroke-width="0.5" opacity="0.45"/>
+      <line x1="112" y1="65" x2="112" y2="260" stroke="white" stroke-width="0.3" opacity="0.25"/>
+      <line x1="188" y1="65" x2="188" y2="260" stroke="white" stroke-width="0.3" opacity="0.25"/>
+    </svg>
+    <div class="ld-body">
+      <p class="ld-pre">تدريج · Old Damascus</p>
+      <h1 class="ld-logo">TADRIJA</h1>
+      <p class="ld-tag">Walk slowly. Discover stories.</p>
+      <p class="ld-desc">A cultural walking companion for the oldest living city on earth. <em>Not a map. A way of seeing.</em></p>
+      <div class="ld-ctas">
+        <button class="ld-btn primary" onclick="go('home')">Preview the Experience</button>
+        <button class="ld-btn ghost" onclick="scrollToWait()">Join the Waitlist</button>
+      </div>
+    </div>
+    <div class="ld-scroll-hint">
+      <span>Scroll to explore</span>
+      <div class="ld-scroll-arrow">↓</div>
+    </div>
+  </div>
+
+  <div class="ld-section">
+    <p class="ld-sec-lbl">The Idea</p>
+    <h2 class="ld-sec-title">Google Maps tells you where you are.<br><em>TADRIJA tells you where you are in history.</em></h2>
+    <div class="ld-sec-text">
+      <p>Old Damascus is the oldest continuously inhabited city on earth. Every alley holds a story. Every door hides a courtyard. Every corner has been turned by two thousand years of people before you.</p>
+      <p>But a map won't tell you any of that. It will get you from one point to another and leave the soul of the place invisible.</p>
+      <p>TADRIJA is different. It walks with you — and as you move, the city speaks.</p>
+    </div>
+  </div>
+
+  <div class="ld-section">
+    <p class="ld-sec-lbl">How It Works</p>
+    <h2 class="ld-sec-title">Three layers, <em>one walk.</em></h2>
+    <div class="ld-diff">
+      <div class="ld-diff-row">
+        <div class="ld-diff-ic">🧭</div>
+        <div class="ld-diff-txt">
+          <div class="ld-diff-h">Routes</div>
+          <div class="ld-diff-p">Curated walks through the old city. Pick one and follow it — or wander freely.</div>
+        </div>
+      </div>
+      <div class="ld-diff-row">
+        <div class="ld-diff-ic">📖</div>
+        <div class="ld-diff-txt">
+          <div class="ld-diff-h">Stories</div>
+          <div class="ld-diff-p">As you walk, the history of each place surfaces. Brief, human, specific.</div>
+        </div>
+      </div>
+      <div class="ld-diff-row">
+        <div class="ld-diff-ic">✦</div>
+        <div class="ld-diff-txt">
+          <div class="ld-diff-h">Local Insights</div>
+          <div class="ld-diff-p">The things only locals know. Where to eat. What to order. Which door to push.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ld-section">
+    <p class="ld-sec-lbl">A Taste</p>
+    <h2 class="ld-sec-title">The kind of thing <em>TADRIJA knows.</em></h2>
+    <div class="ld-taste">
+      <div class="ld-taste-shimmer"></div>
+      <p class="ld-taste-lbl">✦ Verified · Al-Qaimariyya Street</p>
+      <p class="ld-taste-q">"The best food in Damascus is halfway down Foot Street. Ask for Ahmad. And ask him for more pickles — the pickles are the point."</p>
+      <p class="ld-taste-sub">This is a real place, told by someone who lives here. The whole platform is built on moments like this.</p>
+    </div>
+  </div>
+
+  <div class="ld-wait" id="waitSection">
+    <h2 class="ld-wait-title">Be there <em>when it opens.</em></h2>
+    <p class="ld-wait-text">TADRIJA is in early preview. Join the waitlist and we'll tell you the moment the full city is ready to walk.</p>
+    <form class="ld-form" name="waitlist" method="POST" data-netlify="true" netlify-honeypot="bot-field" onsubmit="return handleWaitlist(event)">
+      <input type="hidden" name="form-name" value="waitlist">
+      <p style="display:none"><label>Don't fill this: <input name="bot-field"></label></p>
+      <input class="ld-input" type="text" name="name" placeholder="Your name" required>
+      <input class="ld-input" type="email" name="email" placeholder="Your email" required>
+      <button class="ld-form-btn" type="submit">Join the Waitlist</button>
+    </form>
+    <div class="ld-success" id="waitSuccess">
+      <div class="ld-success-ic">✦</div>
+      <p class="ld-success-txt">You're on the list.</p>
+      <p class="ld-success-sub">We'll be in touch when the city opens.</p>
+    </div>
+    <p class="ld-form-note">No spam. Just one message, when it's ready.</p>
+  </div>
+
+  <div class="ld-footer">
+    <div class="ld-footer-logo">TAD<em>RIJA</em></div>
+    <div class="ld-footer-txt">تدريج · Old Damascus · 2026</div>
+  </div>
+</div>
+
+<!-- ════ HOME (preview) ════ -->
+<div class="screen" id="home">
+  <div class="preview-ribbon">
+    ✦ Early Preview <span>· Two real walks</span>
+    <span class="preview-exit" onclick="go('landing')">✕</span>
+  </div>
+  <div class="home-scroll">
+    <div class="hm-header">
+      <div class="hm-header-glow"></div>
+      <div class="hm-top">
+        <div class="hm-wordmark">TAD<em>RIJA</em></div>
+        <div class="hm-map-btn" onclick="openMap()"><span>🗺</span><span>Open Map</span></div>
+      </div>
+      <div class="hm-hero">
+        <h1>Walk the city.<br><em>Discover its soul.</em></h1>
+        <p>Curated routes through Old Damascus — with the places only locals know.</p>
+      </div>
+    </div>
+
+    <div class="sec"><span class="sec-lbl">Routes</span><span class="sec-all">Preview</span></div>
+    <div class="routes-rail">
+      <div class="rc featured" onclick="showRoute('eat')">
+        <div class="rc-img" style="background:linear-gradient(135deg,#1c1205,#0f0802)"><div class="rc-emoji">🍽</div><div class="rc-veil"></div><div class="rc-badge">Real · Verified</div></div>
+        <div class="rc-body"><p class="rc-tag">Local · Food</p><p class="rc-name">Eat Like a Local</p><div class="rc-row"><span class="rc-meta">1.5h · 2 stops</span><span class="rc-arrow">→</span></div></div>
+      </div>
+      <div class="rc" onclick="showRoute('historical')">
+        <div class="rc-img" style="background:linear-gradient(135deg,#201508,#120d05)"><div class="rc-emoji">🕌</div><div class="rc-veil"></div></div>
+        <div class="rc-body"><p class="rc-tag">Heritage</p><p class="rc-name">Umayyad to Bab Sharqi</p><div class="rc-row"><span class="rc-meta">2.5h · 4 stops</span><span class="rc-arrow">→</span></div></div>
+      </div>
+      <div class="rc" style="opacity:0.55" onclick="comingSoon()">
+        <div class="rc-img" style="background:linear-gradient(135deg,#0d1218,#07090d)"><div class="rc-emoji">🌙</div><div class="rc-veil"></div><div class="rc-soon">Soon</div></div>
+        <div class="rc-body"><p class="rc-tag">Discovery</p><p class="rc-name">Hidden Damascus</p><div class="rc-row"><span class="rc-meta">Coming soon</span></div></div>
+      </div>
+    </div>
+
+    <div class="div"></div>
+    <div class="sec"><span class="sec-lbl">Local Insights</span></div>
+    <div class="insights-strip">
+      <div class="insight-pill real" onclick="showRoute('eat')">
+        <div class="ip-icon">🍽</div>
+        <div class="ip-body"><p class="ip-label verified">✦ Verified · Al-Qaimariyya</p><p class="ip-text">Ask Ahmad for more pickles</p><p class="ip-sub">The best meal in Damascus. A local told us.</p></div>
+        <div class="ip-arr">→</div>
+      </div>
+      <div class="insight-pill real" onclick="showRoute('eat')">
+        <div class="ip-icon">🥐</div>
+        <div class="ip-body"><p class="ip-label verified">✦ Verified · Al-Amaliyya</p><p class="ip-text">Chocolate, not cheese</p><p class="ip-sub">The croissant rule nobody tells you.</p></div>
+        <div class="ip-arr">→</div>
+      </div>
+      <div class="insight-pill" onclick="showRoute('historical')">
+        <div class="ip-icon">🕌</div>
+        <div class="ip-body"><p class="ip-label">Heritage · Old City</p><p class="ip-text">The street that hasn't changed in 2,000 years</p><p class="ip-sub">Via Recta — still straight, still alive.</p></div>
+        <div class="ip-arr">→</div>
+      </div>
+    </div>
+    <div style="height:10px;"></div>
+  </div>
+
+  <div class="bnav">
+    <div class="bn on"><div class="bn-ic">🏠</div><div class="bn-lb">Home</div></div>
+    <div class="bn" onclick="openMap()"><div class="bn-ic">🗺</div><div class="bn-lb">Map</div></div>
+    <div class="bn" onclick="scrollToWaitFromApp()"><div class="bn-ic">✦</div><div class="bn-lb">Join</div></div>
+  </div>
+</div>
+
+<!-- ════ MAP ════ -->
+<div class="screen" id="mapview">
+  <div id="leafletMap"></div>
+  <div class="mv-top">
+    <button class="mv-back" onclick="go('home')">← Back</button>
+    <span class="mv-title">Old Damascus</span>
+    <button class="mv-back" onclick="go('home')">Close</button>
+  </div>
+  <div class="mv-legend">
+    <div class="mv-leg"><div class="mv-leg-dot route"></div><span>Route stops</span></div>
+    <div class="mv-leg"><div class="mv-leg-dot insight"></div><span>Local insights</span></div>
+  </div>
+</div>
+
+<!-- ════ ROUTE DETAIL ════ -->
+<div class="screen" id="routedet">
+  <div class="rd-hero">
+    <div class="rd-hero-emoji" id="rdEmoji">🕌</div>
+    <button class="rd-back" onclick="go('home')">← Back</button>
+    <p class="rd-tag" id="rdTag">Heritage</p>
+    <h1 class="rd-title" id="rdTitle">Route</h1>
+    <p class="rd-desc" id="rdDesc"></p>
+    <div class="rd-stats">
+      <div><div class="rd-sv" id="rdDur">2h</div><div class="rd-sl">Duration</div></div>
+      <div><div class="rd-sv" id="rdStops">4</div><div class="rd-sl">Stops</div></div>
+      <div><div class="rd-sv" id="rdDist">2km</div><div class="rd-sl">Distance</div></div>
+    </div>
+  </div>
+  <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:90px;">
+    <div class="rd-stops" id="rdStopsContainer"></div>
+  </div>
+  <div class="rd-begin"><button class="btn-begin" onclick="startWalk()">Begin Walk ↑</button></div>
+</div>
+
+<!-- ════ WALKING ════ -->
+<div class="screen" id="walking">
+  <div id="walkMap"></div>
+  <div class="wk-top">
+    <div><div class="wk-route-nm" id="wkRouteName">Route</div><div class="wk-prog" id="wkProg"></div></div>
+    <button class="wk-end" onclick="go('home')">End Walk</button>
+  </div>
+  <div class="insight-toast" id="toast">
+    <div class="it-handle-wrap" onclick="toggleToast()"><div class="it-handle"></div></div>
+    <div class="it-peek" onclick="toggleToast()">
+      <div class="it-icon-wrap route-ic" id="toastIcon">🧭</div>
+      <div class="it-peek-right">
+        <p class="it-peek-lbl nav" id="toastLabel">Next Stop</p>
+        <p class="it-peek-name" id="toastName">—</p>
+        <p class="it-peek-sub" id="toastSub">—</p>
+      </div>
+      <span class="it-chevron">↑</span>
+    </div>
+    <div class="it-rule"></div>
+    <div class="it-full" id="toastFull"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* ══ DATA ══ */
+// Approximate coordinates in Old Damascus (for preview map — refine with real GPS later)
+const ROUTES = {
+  eat:{
+    tag:'Local · Verified', emoji:'🍽', title:'Eat Like a Local',
+    desc:'Two real places. One local meal, one perfect croissant. Chosen by someone who lives here — not a guidebook.',
+    dur:'1.5h', stops:'2', dist:'0.8km',
+    coords:[[33.5112,36.3128],[33.5095,36.3075]],
+    stopsList:[
+      { type:'nav', num:1, tag:'Lunch · Al-Qaimariyya Street', name:"Ahmad's Table",
+        prev:'The best food you will eat in Damascus. Ask Ahmad for more pickles.',
+        dir:'Head north on Al-Qaimariyya. Halfway down, left side. You will smell the bread before you see the door.',
+        story:{ type:'insight', icon:'🍽', lbl:'✦ Verified · Local', title:"Ahmad's Table", sub:'Al-Qaimariyya Street · Lunch',
+          body:`<p>Al-Qaimariyya — what locals call Foot Street — is easy to walk through quickly. Don't.</p><p>Halfway down, on your left, there is a small restaurant with no ambition to be anything other than what it is. The food is the best you will eat in Damascus. Order whatever is in front of you.</p><p>Next door, a bakery sells traditional bread from a clay oven. Buy some. Bring it back to the table. Ahmad will not mind.</p><p>Ask him for more pickles. The pickles are the point.</p>`,
+          find:'Halfway down Al-Qaimariyya, left side. You will smell the bread before you see the door.' } },
+      { type:'nav', num:2, tag:'After · Al-Amaliyya Street', name:'The Chocolate Croissant',
+        prev:'Order the chocolate. Not the cheese. One rule.',
+        dir:'Walk to Al-Amaliyya. Look for the clean shopfront. Order before the crowd.',
+        story:{ type:'insight', icon:'🥐', lbl:'✦ Verified · Local', title:'The Chocolate Croissant of Al-Amaliyya', sub:'Al-Amaliyya Street · Morning',
+          body:`<p>There is a bakery on Al-Amaliyya Street that takes croissants seriously in a city that has every reason not to bother. Small, clean, unhurried.</p><p>One rule: order the chocolate. Not the cheese. The cheese is fine. The chocolate is something else entirely.</p><p>This is not a secret to anyone who lives nearby. It will become one of yours.</p>`,
+          find:'Al-Amaliyya Street. Look for the clean shopfront. Order before the morning crowd does.' } }
+    ]
+  },
+  historical:{
+    tag:'Heritage', emoji:'🕌', title:'Umayyad Mosque to Bab Sharqi',
+    desc:'From the oldest continuously functioning mosque in the world to a Roman gate still in use after two thousand years. The soul of the old city in one walk.',
+    dur:'2.5h', stops:'4', dist:'2.8km',
+    coords:[[33.5117,36.3065],[33.5110,36.3105],[33.5100,36.3160],[33.5088,36.3140]],
+    stopsList:[
+      { type:'nav', num:1, tag:'Start · Sacred Space', name:'Umayyad Mosque',
+        prev:'Three faiths. Fourteen centuries. One courtyard. Step inside and the city goes quiet.',
+        dir:'Enter from the northern gate on Al-Hamidiyah Souq. The courtyard is straight ahead.',
+        story:{ type:'story', ey:'Sacred Space · 706 AD', title:'Where Three Faiths Prayed', sub:'Umayyad Mosque · Old Damascus',
+          body:`<p>The Umayyad Mosque was not built on neutral ground. For four thousand years this plot has been considered sacred — first as an Aramean temple, then Roman, then Byzantine cathedral, then mosque.</p><p>The Caliph al-Walid I began construction in 706 AD. The cathedral's western wall was incorporated directly into the mosque's architecture. You can still see where one ends and the other begins.</p>`,
+          quote:{text:'You step inside and the world becomes quiet.',cite:'Ibn Jubayr, traveller, 1184 AD'} } },
+      { type:'insight-stop', num:'✦', tag:'Insight · Al-Hamidiyah Souq', name:'Light Through Bullet Holes',
+        prev:'The shafts of light in the souq ceiling come from 1920 French artillery. Arrive before 9am.',
+        story:{ type:'insight', icon:'☀️', lbl:'Insight · Al-Hamidiyah Souq', title:'The Bullet Holes That Make Beautiful Light', sub:'Al-Hamidiyah Souq · Before 9am',
+          body:`<p>The holes in the iron ceiling of Al-Hamidiyah Souq are not decorative. They were made by French artillery in 1920. Every morning, light falls through them in long golden shafts over the market.</p><p>It lasts about forty minutes. Most people sleep through it.</p>`,
+          find:'Enter the souq from the Umayyad Mosque end. Arrive before 9am. Look up.' } },
+      { type:'nav', num:2, tag:'Ancient Road', name:'Via Recta — The Straight Street',
+        prev:'Two thousand years old. Still straight. Paul walked it blind.',
+        dir:'Exit the mosque east. Via Recta runs parallel — take the first right then left.',
+        story:{ type:'story', ey:'Ancient Road · 1st century AD', title:'The Street That Refused to Bend', sub:'Via Recta · Madhat Pasha Souq',
+          body:`<p>The street beneath your feet has been walked for over two thousand years without once changing its direction. Romans built it. Paul walked it blind. Merchants traded on it for fifteen centuries.</p><p>Notice the fabric draped above — shielding walkers from the sun — in some form since Ottoman times.</p>`,
+          quote:{text:'Still straight, still opening its arms to strangers from every nation.',cite:'19th century traveller'} } },
+      { type:'nav', num:3, tag:'Roman Gate', name:'Bab Sharqi — The Eastern Gate',
+        prev:'The oldest continuously used city gate in the world. Two thousand years of hands on these stones.',
+        dir:'Follow Via Recta east to its end. Bab Sharqi is the gate you walk through.',
+        story:{ type:'story', ey:'Roman Gate · 1st century AD', title:'The Gate Older Than Memory', sub:'Bab Sharqi · Eastern Gate',
+          body:`<p>The stone blocks at the base still bear the chisel marks of Roman masons from the 1st century AD. Above them: Byzantine, Umayyad, Mamluk and Ottoman additions — a geology of civilisations.</p><p>The stones are worn smooth at hand height — the accumulated touch of millions of hands over two thousand years.</p>`,
+          quote:{text:'Every civilisation that controlled Damascus passed through this gate. Most thought it would be theirs forever.',cite:'Local historian'} } }
+    ]
+  }
+};
+
+const DAMASCUS_CENTER = [33.5102, 36.3110];
+let curRoute='historical', walkStops=[], stopIdx=0, toastState='peek';
+let overviewMap=null, walkMapObj=null;
+
+function go(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function scrollToWait(){ document.getElementById('waitSection').scrollIntoView({behavior:'smooth'}); }
+function scrollToWaitFromApp(){ go('landing'); setTimeout(scrollToWait,300); }
+function comingSoon(){ alert('This walk is coming soon. Join the waitlist to be the first to know.'); }
+
+/* waitlist (Netlify forms handles the POST; this just shows success) */
+function handleWaitlist(e){
+  // Let Netlify capture it, but show success inline too
+  const form = e.target;
+  const data = new FormData(form);
+  fetch('/', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:new URLSearchParams(data).toString()})
+    .then(()=>{ form.style.display='none'; document.getElementById('waitSuccess').classList.add('show'); })
+    .catch(()=>{ form.style.display='none'; document.getElementById('waitSuccess').classList.add('show'); });
+  return false;
+}
+
+/* ── map availability guard ── */
+function mapsReady(){ return (typeof L !== 'undefined'); }
+// Retry for up to ~4s waiting for Leaflet to finish loading, then build map or show fallback
+function waitForMaps(elId, build, tries){
+  tries = tries || 0;
+  if(mapsReady()){ build(); return; }
+  if(tries > 20){ mapFallback(elId); return; }
+  setTimeout(()=>waitForMaps(elId, build, tries+1), 200);
+}
+function mapFallback(elId){
+  const el=document.getElementById(elId);
+  if(el && !el.querySelector('.map-fallback')){
+    el.innerHTML=`<div class="map-fallback" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:30px;text-align:center;">
+      <div style="font-size:2rem;opacity:0.5;">🗺</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.1rem;color:var(--stone);">The live map loads once online</div>
+      <div style="font-size:0.72rem;color:var(--stone);opacity:0.6;line-height:1.6;max-width:260px;">The interactive map of Old Damascus appears when this page is hosted on the web. Everything else works here in preview.</div>
+    </div>`;
+  }
+}
+
+/* ── overview map ── */
+function openMap(){
+  go('mapview');
+  waitForMaps('leafletMap', ()=>{
+    if(!overviewMap){
+      overviewMap = L.map('leafletMap',{zoomControl:true,attributionControl:false}).setView(DAMASCUS_CENTER,15);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(overviewMap);
+      Object.values(ROUTES).forEach(r=>{
+        r.stopsList.forEach((s,i)=>{
+          const c = r.coords[i]; if(!c) return;
+          const isIns = s.type==='insight-stop';
+          const color = isIns ? '#96591e' : '#c4881f';
+          L.circleMarker(c,{radius:7,fillColor:color,color:'#fff',weight:1.5,fillOpacity:0.9})
+            .addTo(overviewMap)
+            .bindPopup(`<div class="tdj-popup-tag">${s.tag||''}</div><div class="tdj-popup-name">${s.name}</div>`);
+        });
+      });
+    }
+    overviewMap.invalidateSize();
+  });
+}
+
+/* ── route detail ── */
+function showRoute(id){
+  curRoute=id; const r=ROUTES[id];
+  document.getElementById('rdEmoji').textContent=r.emoji;
+  document.getElementById('rdTag').textContent=r.tag;
+  document.getElementById('rdTitle').textContent=r.title;
+  document.getElementById('rdDesc').textContent=r.desc;
+  document.getElementById('rdDur').textContent=r.dur;
+  document.getElementById('rdStops').textContent=r.stops;
+  document.getElementById('rdDist').textContent=r.dist;
+  const c=document.getElementById('rdStopsContainer');
+  c.innerHTML=r.stopsList.map((s,i)=>{
+    const isIns=s.type==='insight-stop', isFirst=i===0, hasLine=i<r.stopsList.length-1;
+    return `<div class="stop ${isFirst?'first':''} ${isIns?'insight-stop':''} fu">
+      <div class="stop-spine"><div class="stop-num">${s.num}</div>${hasLine?'<div class="stop-line"></div>':''}</div>
+      <div class="stop-body">${isIns?'<div class="insight-tag"><span>✦ Insight</span></div>':''}
+        <p class="stop-tag">${s.tag}</p><p class="stop-name">${s.name}</p><p class="stop-prev">${s.prev}</p></div></div>`;
+  }).join('');
+  go('routedet');
+}
+
+/* ── walk ── */
+function startWalk(){
+  const r=ROUTES[curRoute]; walkStops=r.stopsList; stopIdx=0;
+  document.getElementById('wkRouteName').textContent=r.title;
+  go('walking');
+  updateProgress(); loadStop(0);
+  setTimeout(()=>setToast('peek'),800);
+  waitForMaps('walkMap', ()=>{
+    if(!walkMapObj){
+      walkMapObj = L.map('walkMap',{zoomControl:false,attributionControl:false}).setView(r.coords[0],16);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(walkMapObj);
+    } else {
+      walkMapObj.setView(r.coords[0],16);
+    }
+    drawWalkMarkers();
+    walkMapObj.invalidateSize();
+  });
+}
+
+let walkLayerGroup=null;
+function drawWalkMarkers(){
+  if(!mapsReady() || !walkMapObj) return;
+  const r=ROUTES[curRoute];
+  if(walkLayerGroup) walkLayerGroup.remove();
+  walkLayerGroup = L.layerGroup().addTo(walkMapObj);
+  // path line
+  if(r.coords.length>1){
+    L.polyline(r.coords,{color:'#c4881f',weight:2,opacity:0.4,dashArray:'4,6'}).addTo(walkLayerGroup);
+  }
+  r.stopsList.forEach((s,i)=>{
+    const c=r.coords[i]; if(!c) return;
+    const isIns=s.type==='insight-stop';
+    const color = i===0 ? '#d9a832' : isIns ? '#96591e' : 'rgba(166,144,112,0.5)';
+    const m = L.circleMarker(c,{radius:i===stopIdx?9:7,fillColor:color,color:'#fff',weight:1.5,fillOpacity:0.9}).addTo(walkLayerGroup);
+    m.on('click',()=>{ stopIdx=i; updateProgress(); loadStop(i); setToast('open'); if(walkMapObj) walkMapObj.panTo(c); });
+  });
+}
+
+function loadStop(idx){
+  const s=walkStops[idx]; if(!s) return;
+  const isIns=s.type==='insight-stop';
+  document.getElementById('toastIcon').textContent=isIns?'✦':'🧭';
+  document.getElementById('toastIcon').className=`it-icon-wrap ${isIns?'insight-ic':'route-ic'}`;
+  document.getElementById('toastLabel').textContent=isIns?'Insight Nearby':'Next Stop';
+  document.getElementById('toastLabel').className=`it-peek-lbl ${isIns?'ins':'nav'}`;
+  document.getElementById('toastName').textContent=s.name;
+  document.getElementById('toastSub').textContent=isIns?'Tap to discover':(s.dir?s.dir.substring(0,45)+'…':'');
+  const full=document.getElementById('toastFull'); const st=s.story;
+  if(st.type==='story'){
+    full.innerHTML=`<p class="it-story-ey">${st.ey}</p><h2 class="it-story-title">${st.title}</h2><p class="it-story-sub">${st.sub}</p><div class="it-rule2"></div><div class="it-body">${st.body}</div>${st.quote?`<div class="it-quote"><p>${st.quote.text}</p><cite>— ${st.quote.cite}</cite></div>`:''}<button class="btn-next" onclick="nextStop()">${idx<walkStops.length-1?'Continue →':'Complete Walk ✓'}</button>`;
+  } else {
+    full.innerHTML=`<div class="it-ins-header"><div class="it-ins-badge">${st.icon}</div><div><p class="it-ins-lbl">${st.lbl}</p><p class="it-ins-name">${st.title}</p></div></div><p class="it-story-sub" style="margin-bottom:14px;">${st.sub}</p><div class="it-ins-body">${st.body}</div>${st.find?`<div class="it-find"><p class="it-find-lbl">How to find it</p><p class="it-find-text">${st.find}</p></div>`:''}<button class="btn-next" onclick="nextStop()">${idx<walkStops.length-1?'Continue →':'Complete Walk ✓'}</button>`;
+  }
+}
+
+function nextStop(){
+  stopIdx++;
+  if(stopIdx>=walkStops.length){ go('home'); return; }
+  setToast('hidden');
+  const c=ROUTES[curRoute].coords[stopIdx];
+  if(c && mapsReady() && walkMapObj) walkMapObj.panTo(c);
+  setTimeout(()=>{
+    loadStop(stopIdx); updateProgress(); drawWalkMarkers(); setToast('peek');
+    if(walkStops[stopIdx].type==='insight-stop') setTimeout(()=>setToast('open'),1000);
+  },1200);
+}
+
+function updateProgress(){
+  document.getElementById('wkProg').innerHTML=walkStops.map((s,i)=>{
+    if(s.type==='insight-stop') return `<div class="wkp ins"></div>`;
+    const cls=i<stopIdx?'done':i===stopIdx?'now':''; return `<div class="wkp ${cls}"></div>`;
+  }).join('');
+}
+
+function setToast(state){
+  toastState=state; const t=document.getElementById('toast');
+  t.classList.remove('peek','open');
+  if(state==='peek')t.classList.add('peek');
+  if(state==='open'){t.classList.add('open');t.scrollTop=0;}
+}
+function toggleToast(){ toastState==='open'?setToast('peek'):setToast('open'); }
+
+let tyStart=0; const toast=document.getElementById('toast');
+toast.addEventListener('touchstart',e=>{tyStart=e.touches[0].clientY;},{passive:true});
+toast.addEventListener('touchend',e=>{const d=tyStart-e.changedTouches[0].clientY;if(Math.abs(d)>40){d>0?setToast('open'):setToast('peek');}},{passive:true});
+</script>
+</body>
+</html>
